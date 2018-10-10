@@ -152,26 +152,75 @@ short execute_commands(char* line) //compile with c99
 		j++;
 	}
 	//i is now pointing to the first empty index is array parsed
+	for (int j = 0; j < i; j ++)
+	  printf("result arr %d: %s\n", j, parsed[j]);
 
-	//print parsed command
-	// printf("\n");
-	printf("commands at i = %d is %s\n",0, commands[0]);
-printf("commands at i = %d is %s\n",1, commands[1]);
-printf("commands at i = %d is %s\n",2, commands[2]);
-	// char *command[MAX_LEN];
-	// for (int k = 0; k < MAX_LEN; k++){
-	// 	// if (strcmp(parsed[k],"/0") == 0) break;
-	// 	if (!parsed[k]) break;
-	// 	// printf("parsed at index %d is %s\n", k,parsed[k]);
-	// 	while (strcmp(parsed[k],"/0") != 0){
-	// 		concatenate(command, parsed[k]); //find first command
-	// 	}
-	// 	if (strcmp(parsed[k],"/0") == 0){
-	// 		//we have our command
-	// 		//fork new process
-	// 		//
-	// 	}
-	// }
+
+	// fork processes
+	pid_t pid; //keep track of process id of forks
+	int fd[2]; //hold fds of both ends of the pipe
+	j = 0;//j keeps track of commands array
+	i = 0;//i keeps track of parsed array
+
+	//create pipe
+	if (pipe(fd) < 0)
+		perror("pipe error");
+
+		pid = fork();
+		if (pid < 0){
+			perror("Problem forking");
+			exit(1);
+	}
+	else if (pid > 0){
+		//parent process
+		//
+
+		while (strcmp(commands[j], "\0") != 0){ //iterate through command array
+			//fork new process for each command
+			//execl to perform the command
+			//dup output to a pipe  of parent process, and go to next command and create child and repeat
+			pid = fork();
+			if (pid < 0){
+				perror("Problem forking");
+				exit(1);
+			}
+			else if (pid > 0){
+				//parent process
+				//
+				wait(0);
+				close(fd[1]) //parent is not going to write, close fd write end
+				while (strcmp(parsed[i], "\0") != 0){
+					i++;
+				}//end of loop, i would now point to keyword of new command
+				//return to the while loop
+			}
+			if (pid == 0){
+				//child process
+				close(fd[0]); //close the read end, child only needs to write
+				if (dup2(fd[1], STDOUT_FILENO) < 0){
+					//use dup2 to redirect the writing of fd[1] into shared memory
+					//if its less than 0, error has occured
+					perror("cant dup");
+					exit(1);
+				}
+
+				//perform execl function to make the system call
+				if (execvp(parsed[i], commands[j]) < 0){//perform the system call and work
+					perror("exec problem");
+					exit(1);
+				}
+
+				//then return the result to the parent process
+				//the parents process would then return the result to its parent
+				//the loop would continue iterating
+			}
+
+		}
+
+	}
+	else{
+		//child process
+	}
 
 	return status;
 }
